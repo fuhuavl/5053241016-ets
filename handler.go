@@ -16,6 +16,9 @@ func NewHandler() http.Handler {
 	mux.HandleFunc("POST /sumber-daya", a.createResource)
 	mux.HandleFunc("GET /sumber-daya", a.listResources)
 	mux.HandleFunc("GET /sumber-daya/{id}", a.getResource)
+	mux.HandleFunc("POST /peminjaman", a.createBooking)
+	mux.HandleFunc("GET /peminjaman", a.listBookings)
+	mux.HandleFunc("GET /peminjaman/{id}", a.getBooking)
 	return mux
 }
 
@@ -78,4 +81,49 @@ func (a *API) getResource(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, res)
+}
+
+func (a *API) createBooking(w http.ResponseWriter, r *http.Request) {
+	var in inputPeminjaman
+	if !decodeBody(w, r, &in) {
+		return
+	}
+	p, err := in.validate()
+	if err != nil {
+		writeAPIError(w, err)
+		return
+	}
+	created, err := a.store.CreateBooking(p)
+	if err != nil {
+		writeAPIError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, created)
+}
+
+func (a *API) listBookings(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	var sdID *int
+	if q.Has("sumber_daya_id") {
+		n, err := strconv.Atoi(q.Get("sumber_daya_id"))
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "sumber_daya_id harus berupa angka")
+			return
+		}
+		sdID = &n
+	}
+	writeJSON(w, http.StatusOK, a.store.ListBookings(sdID, q.Get("tanggal"), q.Get("status")))
+}
+
+func (a *API) getBooking(w http.ResponseWriter, r *http.Request) {
+	id, ok := parseID(w, r)
+	if !ok {
+		return
+	}
+	b, found := a.store.GetBooking(id)
+	if !found {
+		writeError(w, http.StatusNotFound, "peminjaman tidak ditemukan")
+		return
+	}
+	writeJSON(w, http.StatusOK, b)
 }

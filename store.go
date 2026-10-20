@@ -3,13 +3,15 @@ package main
 import "sync"
 
 type Store struct {
-	mu        sync.Mutex
-	resources []SumberDaya
-	nextResID int
+	mu         sync.Mutex
+	resources  []SumberDaya
+	bookings   []Peminjaman
+	nextResID  int
+	nextBookID int
 }
 
 func NewStore() *Store {
-	return &Store{nextResID: 1}
+	return &Store{nextResID: 1, nextBookID: 1}
 }
 
 func (s *Store) AddResource(r SumberDaya) SumberDaya {
@@ -42,4 +44,65 @@ func (s *Store) findResource(id int) (SumberDaya, bool) {
 		}
 	}
 	return SumberDaya{}, false
+}
+
+func (s *Store) findBooking(id int) int {
+	for i, b := range s.bookings {
+		if b.ID == id {
+			return i
+		}
+	}
+	return -1
+}
+
+func (s *Store) GetBooking(id int) (Peminjaman, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if i := s.findBooking(id); i >= 0 {
+		return s.bookings[i], true
+	}
+	return Peminjaman{}, false
+}
+
+func (s *Store) ListBookings(sumberDayaID *int, tanggal, status string) []Peminjaman {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	out := make([]Peminjaman, 0)
+	for _, b := range s.bookings {
+		if sumberDayaID != nil && b.SumberDayaID != *sumberDayaID {
+			continue
+		}
+		if tanggal != "" && b.Tanggal != tanggal {
+			continue
+		}
+		if status != "" && b.Status != status {
+			continue
+		}
+		out = append(out, b)
+	}
+	return out
+}
+
+func (s *Store) CreateBooking(p Peminjaman) (Peminjaman, *apiError) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if err := s.checkRules(p); err != nil {
+		return Peminjaman{}, err
+	}
+	p.ID = s.nextBookID
+	s.nextBookID++
+	p.Status = StatusAktif
+	s.bookings = append(s.bookings, p)
+	return p, nil
+}
+
+func (s *Store) checkRules(p Peminjaman) *apiError {
+	r, ok := s.findResource(p.SumberDayaID)
+	if !ok {
+		return badRequest("sumber_daya_id tidak ditemukan")
+	}
+	if p.Jumlah > r.Stok {
+		return badRequest("jumlah melebihi stok sumber daya")
+	}
+	return nil
 }
