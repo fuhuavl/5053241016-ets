@@ -23,6 +23,7 @@ func NewHandler() http.Handler {
 	mux.HandleFunc("PUT /peminjaman/{id}", a.updateBooking)
 	mux.HandleFunc("DELETE /peminjaman/{id}", a.deleteBooking)
 	mux.HandleFunc("GET /peminjam/{nama}/kuota", a.getKuota)
+	mux.HandleFunc("GET /ringkasan", a.getRingkasan)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		h, pattern := mux.Handler(r)
 		if pattern != "" {
@@ -200,4 +201,13 @@ func (a *API) getKuota(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, a.store.Kuota(nama, tanggal))
+}
+
+func (a *API) getRingkasan(w http.ResponseWriter, r *http.Request) {
+	tanggal := strings.TrimSpace(r.URL.Query().Get("tanggal"))
+	if !validTanggal(tanggal) {
+		writeError(w, http.StatusBadRequest, "tanggal harus berformat YYYY-MM-DD dan valid")
+		return
+	}
+	writeJSON(w, http.StatusOK, a.store.Ringkasan(tanggal))
 }

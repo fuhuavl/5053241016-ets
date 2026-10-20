@@ -43,3 +43,16 @@ type apiError struct {
 }
 
 func (e *apiError) Error() string { return e.Msg }
+
+type RingkasanSumberDaya struct {
+	SumberDayaID     int    `json:"sumber_daya_id"`
+	Nama             string `json:"nama"`
+	JumlahPeminjaman int    `json:"jumlah_peminjaman"`
+}
+
+type Ringkasan struct {
+	Tanggal          string                `json:"tanggal"`
+	JumlahPeminjaman int                   `json:"jumlah_peminjaman"`
+	TotalUnitSlot    int                   `json:"total_unit_slot"`
+	PerSumberDaya    []RingkasanSumberDaya `json:"per_sumber_daya"`
+}

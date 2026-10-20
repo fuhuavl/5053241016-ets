@@ -184,3 +184,25 @@ func (s *Store) Kuota(peminjam, tanggal string) Kuota {
 	}
 	return Kuota{Peminjam: peminjam, Tanggal: tanggal, Terpakai: terpakai, Maksimal: MaxKuota, Sisa: sisa}
 }
+
+func (s *Store) Ringkasan(tanggal string) Ringkasan {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	hasil := Ringkasan{Tanggal: tanggal, PerSumberDaya: make([]RingkasanSumberDaya, 0, len(s.resources))}
+	for _, r := range s.resources {
+		hasil.PerSumberDaya = append(hasil.PerSumberDaya, RingkasanSumberDaya{SumberDayaID: r.ID, Nama: r.Nama})
+	}
+	for _, b := range s.bookings {
+		if b.Tanggal != tanggal || !menahanSlot(b) {
+			continue
+		}
+		hasil.JumlahPeminjaman++
+		hasil.TotalUnitSlot += b.Jumlah * (b.SlotSelesai - b.SlotMulai + 1)
+		for i := range hasil.PerSumberDaya {
+			if hasil.PerSumberDaya[i].SumberDayaID == b.SumberDayaID {
+				hasil.PerSumberDaya[i].JumlahPeminjaman++
+			}
+		}
+	}
+	return hasil
+}
