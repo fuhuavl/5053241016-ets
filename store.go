@@ -1,6 +1,9 @@
 package main
 
-import "sync"
+import (
+	"net/http"
+	"sync"
+)
 
 type Store struct {
 	mu         sync.Mutex
@@ -86,7 +89,7 @@ func (s *Store) ListBookings(sumberDayaID *int, tanggal, status string) []Peminj
 func (s *Store) CreateBooking(p Peminjaman) (Peminjaman, *apiError) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if err := s.checkRules(p); err != nil {
+	if err := s.checkRules(p, 0); err != nil {
 		return Peminjaman{}, err
 	}
 	p.ID = s.nextBookID
@@ -96,7 +99,9 @@ func (s *Store) CreateBooking(p Peminjaman) (Peminjaman, *apiError) {
 	return p, nil
 }
 
-func (s *Store) checkRules(p Peminjaman) *apiError {
+func menahanSlot(b Peminjaman) bool { return b.Status == StatusAktif }
+
+func (s *Store) checkRules(p Peminjaman, excludeID int) *apiError {
 	r, ok := s.findResource(p.SumberDayaID)
 	if !ok {
 		return badRequest("sumber_daya_id tidak ditemukan")
@@ -104,5 +109,27 @@ func (s *Store) checkRules(p Peminjaman) *apiError {
 	if p.Jumlah > r.Stok {
 		return badRequest("jumlah melebihi stok sumber daya")
 	}
+	if s.adaBentrok(p, r.Stok, excludeID) {
+		return &apiError{http.StatusConflict, "kapasitas slot terlampaui"}
+	}
 	return nil
+}
+
+func (s *Store) adaBentrok(p Peminjaman, stok, excludeID int) bool {
+	for slot := p.SlotMulai; slot <= p.SlotSelesai; slot++ {
+		terpakai := 0
+		for _, b := range s.bookings {
+			if b.ID == excludeID || !menahanSlot(b) {
+				continue
+			}
+			if b.SumberDayaID == p.SumberDayaID && b.Tanggal == p.Tanggal &&
+				b.SlotMulai <= slot && slot <= b.SlotSelesai {
+				terpakai += b.Jumlah
+			}
+		}
+		if terpakai+p.Jumlah > stok {
+			return true
+		}
+	}
+	return false
 }
