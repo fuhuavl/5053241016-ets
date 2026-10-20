@@ -19,6 +19,8 @@ func NewHandler() http.Handler {
 	mux.HandleFunc("POST /peminjaman", a.createBooking)
 	mux.HandleFunc("GET /peminjaman", a.listBookings)
 	mux.HandleFunc("GET /peminjaman/{id}", a.getBooking)
+	mux.HandleFunc("PUT /peminjaman/{id}", a.updateBooking)
+	mux.HandleFunc("DELETE /peminjaman/{id}", a.deleteBooking)
 	return mux
 }
 
@@ -126,4 +128,42 @@ func (a *API) getBooking(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, b)
+}
+
+func (a *API) updateBooking(w http.ResponseWriter, r *http.Request) {
+	id, ok := parseID(w, r)
+	if !ok {
+		return
+	}
+	if _, found := a.store.GetBooking(id); !found {
+		writeError(w, http.StatusNotFound, "peminjaman tidak ditemukan")
+		return
+	}
+	var in inputPeminjaman
+	if !decodeBody(w, r, &in) {
+		return
+	}
+	p, err := in.validate()
+	if err != nil {
+		writeAPIError(w, err)
+		return
+	}
+	updated, err := a.store.UpdateBooking(id, p)
+	if err != nil {
+		writeAPIError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, updated)
+}
+
+func (a *API) deleteBooking(w http.ResponseWriter, r *http.Request) {
+	id, ok := parseID(w, r)
+	if !ok {
+		return
+	}
+	if !a.store.DeleteBooking(id) {
+		writeError(w, http.StatusNotFound, "peminjaman tidak ditemukan")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }

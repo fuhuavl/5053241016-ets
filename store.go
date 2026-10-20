@@ -99,6 +99,33 @@ func (s *Store) CreateBooking(p Peminjaman) (Peminjaman, *apiError) {
 	return p, nil
 }
 
+func (s *Store) UpdateBooking(id int, p Peminjaman) (Peminjaman, *apiError) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	i := s.findBooking(id)
+	if i < 0 {
+		return Peminjaman{}, &apiError{http.StatusNotFound, "peminjaman tidak ditemukan"}
+	}
+	if err := s.checkRules(p, id); err != nil {
+		return Peminjaman{}, err
+	}
+	p.ID = id
+	p.Status = s.bookings[i].Status
+	s.bookings[i] = p
+	return p, nil
+}
+
+func (s *Store) DeleteBooking(id int) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	i := s.findBooking(id)
+	if i < 0 {
+		return false
+	}
+	s.bookings = append(s.bookings[:i], s.bookings[i+1:]...)
+	return true
+}
+
 func menahanSlot(b Peminjaman) bool { return b.Status == StatusAktif }
 
 func (s *Store) checkRules(p Peminjaman, excludeID int) *apiError {
