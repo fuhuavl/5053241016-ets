@@ -83,6 +83,9 @@ func (in inputPeminjaman) validate() (Peminjaman, *apiError) {
 	if mulai < SlotMin || selesai > SlotMax || mulai > selesai {
 		return p, badRequest("slot harus 1 sampai 8 dan slot_mulai <= slot_selesai")
 	}
+	if selesai-mulai+1 > MaxDurasi {
+		return p, badRequest("durasi maksimal 3 slot")
+	}
 	if in.Jumlah == nil || *in.Jumlah < 1 {
 		return p, badRequest("jumlah minimal 1")
 	}

@@ -4,6 +4,7 @@ const (
 	SlotMin     = 1
 	SlotMax     = 8
 	MaxNama     = 50
+	MaxDurasi   = 3
 	StatusAktif = "aktif"
 	JenisRuang  = "ruang"
 	JenisAlat   = "alat"
