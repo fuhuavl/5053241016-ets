@@ -5,6 +5,7 @@ const (
 	SlotMax     = 8
 	MaxNama     = 50
 	MaxDurasi   = 3
+	MaxKuota    = 2
 	StatusAktif = "aktif"
 	JenisRuang  = "ruang"
 	JenisAlat   = "alat"
@@ -26,6 +27,14 @@ type Peminjaman struct {
 	SlotSelesai  int    `json:"slot_selesai"`
 	Jumlah       int    `json:"jumlah"`
 	Status       string `json:"status"`
+}
+
+type Kuota struct {
+	Peminjam string `json:"peminjam"`
+	Tanggal  string `json:"tanggal"`
+	Terpakai int    `json:"terpakai"`
+	Maksimal int    `json:"maksimal"`
+	Sisa     int    `json:"sisa"`
 }
 
 type apiError struct {

@@ -136,6 +136,9 @@ func (s *Store) checkRules(p Peminjaman, excludeID int) *apiError {
 	if p.Jumlah > r.Stok {
 		return badRequest("jumlah melebihi stok sumber daya")
 	}
+	if s.kuotaTerpakai(p.Peminjam, p.Tanggal, excludeID) >= MaxKuota {
+		return &apiError{http.StatusConflict, "kuota peminjaman harian sudah penuh"}
+	}
 	if s.adaBentrok(p, r.Stok, excludeID) {
 		return &apiError{http.StatusConflict, "kapasitas slot terlampaui"}
 	}
@@ -159,4 +162,25 @@ func (s *Store) adaBentrok(p Peminjaman, stok, excludeID int) bool {
 		}
 	}
 	return false
+}
+
+func (s *Store) kuotaTerpakai(peminjam, tanggal string, excludeID int) int {
+	n := 0
+	for _, b := range s.bookings {
+		if b.ID != excludeID && menahanSlot(b) && b.Peminjam == peminjam && b.Tanggal == tanggal {
+			n++
+		}
+	}
+	return n
+}
+
+func (s *Store) Kuota(peminjam, tanggal string) Kuota {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	terpakai := s.kuotaTerpakai(peminjam, tanggal, 0)
+	sisa := MaxKuota - terpakai
+	if sisa < 0 {
+		sisa = 0
+	}
+	return Kuota{Peminjam: peminjam, Tanggal: tanggal, Terpakai: terpakai, Maksimal: MaxKuota, Sisa: sisa}
 }

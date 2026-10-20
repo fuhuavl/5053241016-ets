@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 )
 
 type API struct {
@@ -21,6 +22,7 @@ func NewHandler() http.Handler {
 	mux.HandleFunc("GET /peminjaman/{id}", a.getBooking)
 	mux.HandleFunc("PUT /peminjaman/{id}", a.updateBooking)
 	mux.HandleFunc("DELETE /peminjaman/{id}", a.deleteBooking)
+	mux.HandleFunc("GET /peminjam/{nama}/kuota", a.getKuota)
 	return mux
 }
 
@@ -166,4 +168,14 @@ func (a *API) deleteBooking(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (a *API) getKuota(w http.ResponseWriter, r *http.Request) {
+	nama := strings.TrimSpace(r.PathValue("nama"))
+	tanggal := strings.TrimSpace(r.URL.Query().Get("tanggal"))
+	if !validTanggal(tanggal) {
+		writeError(w, http.StatusBadRequest, "tanggal harus berformat YYYY-MM-DD dan valid")
+		return
+	}
+	writeJSON(w, http.StatusOK, a.store.Kuota(nama, tanggal))
 }
