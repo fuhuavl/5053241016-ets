@@ -23,8 +23,30 @@ func NewHandler() http.Handler {
 	mux.HandleFunc("PUT /peminjaman/{id}", a.updateBooking)
 	mux.HandleFunc("DELETE /peminjaman/{id}", a.deleteBooking)
 	mux.HandleFunc("GET /peminjam/{nama}/kuota", a.getKuota)
-	return mux
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h, pattern := mux.Handler(r)
+		if pattern != "" {
+			mux.ServeHTTP(w, r)
+			return
+		}
+		c := &statusCatcher{header: w.Header()}
+		h.ServeHTTP(c, r)
+		if c.status == http.StatusMethodNotAllowed {
+			writeError(w, c.status, "method tidak diizinkan")
+			return
+		}
+		writeError(w, http.StatusNotFound, "rute tidak ditemukan")
+	})
 }
+
+type statusCatcher struct {
+	header http.Header
+	status int
+}
+
+func (c *statusCatcher) Header() http.Header         { return c.header }
+func (c *statusCatcher) Write(b []byte) (int, error) { return len(b), nil }
+func (c *statusCatcher) WriteHeader(status int)      { c.status = status }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
